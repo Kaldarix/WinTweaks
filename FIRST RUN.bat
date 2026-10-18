@@ -43,17 +43,6 @@ if not exist "%asset%main.cfg" (
     exit /b
 )
 
-:: Check external VBS scripts exist
-if not exist "%scr%update_prompt.vbs" (
-    echo [ERROR] Missing scripts\update_prompt.vbs!
-    pause
-    exit /b
-)
-if not exist "%scr%\confirm_proceed.vbs" (
-    echo [ERROR] Missing scripts\confirm_proceed.vbs!
-    pause
-    exit /b
-)
 echo [SUCCESS] All core files present.
 timeout /t 1 >nul
 goto :eof
@@ -62,36 +51,86 @@ goto :eof
 cls
 echo [INFO] Checking for updates against GitHub...
 for /f "delims=" %%i in ('curl -s "https://api.github.com/repos/%repo%/releases/latest" ^| findstr "tag_name"') do (
-    set "latest_tag=%%i"
+    set "raw_tag=%%i"
 )
 
+for /f "delims=" %%i in ('powershell -Command "$raw = '%raw_tag%'; if ($raw -match 'v?(\d+\.\d+\.\d+)') { $matches[1] } else { '0.0.0' }"') do (
+    set "latest_ver=%%i"
+)
 echo [INFO] Installed Version: v%ver%
-echo [INFO] Latest Version:    v%latest_tag%
-call :vbs_outdated_prompt
+echo [INFO] Latest Version:    v%latest_ver%
+
+:: Compare versions using PowerShell
+powershell -Command "$local = [Version]'%ver%'; $remote = [Version]'%latest_ver%'; if ($remote -gt $local) { exit 0 } else { exit 1 }"
+
+if %errorLevel% equ 0 (
+    echo [INFO] A newer version is available on GitHub!
+    timeout /t 1 >nul
+    call :version_prompt
+) else (
+    echo [SUCCESS] You are running the latest version or newer.
+    timeout /t 1 >nul
+)
 timeout /t 1 >nul
 goto :eof
 
-:vbs_outdated_prompt
-for /f "delims=" %%a in ('cscript //nologo "%scr%update_prompt.vbs"') do set "vbs_result=%%a"
+:version_prompt
+:: extra delay for dramatic effect
+cls
+echo ===================================================
+ping localhost -n 1 >nul
+echo  WARNING: WinTweaks is Outdated!
+ping localhost -n 1 >nul
+echo ===================================================
+ping localhost -n 1 >nul
+echo  Installed Version : v%ver%
+ping localhost -n 1 >nul
+echo  Latest Version    : v%latest_ver%
+ping localhost -n 2 >nul
+echo.
+ping localhost -n 1 >nul
+echo  [U] Update
+ping localhost -n 1 >nul
+echo  [P] Proceed anyway
+ping localhost -n 1 >nul
+echo  [C] Cancel setup
+ping localhost -n 2 >nul
+echo.
+ping localhost -n 1 >nul
+choice /c UPC /n /m "Select an option [U/P/C]: "
 
-if "%vbs_result%"=="6" (
-    start https://github.com/%repo%/releases/latest
-    exit /b
-) else if "%vbs_result%"=="7" (
-	call :confirm_proceed
-) else (
+if errorlevel 3 (
     echo [INFO] Setup canceled by user.
+    timeout /t 1 >nul
     exit
 )
-timeout /t 1 >nul
-goto :eof
+if errorlevel 2 (
+    goto confirm_proceed
+)
+if errorlevel 1 (
+    start https://github.com/%repo%/releases/latest
+    exit
+)
 
 :confirm_proceed
-for /f "delims=" %%a in ('cscript //nologo "%scr%confirm_proceed.vbs"') do set "conf_result=%%a"
+cls
+echo ===================================================
+echo  WARNING: Proceed with Outdated Version?
+echo ===================================================
+echo  Are you sure you want to proceed? 
+echo  There might be existing bugs in your outdated version.
+echo.
+echo  [Y] Yes, proceed anyway
+echo  [N] No, update
+echo.
+choice /c YN /n /m "Are you sure? [Y/N]: "
 
-if "%conf_result%"=="NO" (
+if errorlevel 2 (
     start https://github.com/%repo%/releases/latest
     exit /b
+)
+if errorlevel 1 (
+    goto check_python
 )
 goto :eof
 
@@ -142,6 +181,6 @@ echo [SUCCESS] First-run setup completed successfully!
 timeout /t 2 >nul
 
 :: Launch your main Python script here once ready!
-:: python main.py
+python main.py
 pause
 exit /b
