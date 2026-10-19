@@ -6,8 +6,6 @@ title WIN-TWEAKS SETUP
 cd /d "%~dp0"
 set "ver=1.0.0"
 set "repo=Kaldarix/WinTweaks"
-set "scr=assets\scripts\"
-set "asset=assets\"
 
 echo [INFO] Initializing WinTweaks First Run...
 timeout /t 2 >nul
@@ -37,10 +35,10 @@ cls
 echo [INFO] Verifying project files and directory structure...
 
 :: Check required configuration file
-if not exist "%asset%main.cfg" (
+if not exist "main.cfg" (
     echo [ERROR] main.cfg is missing! Please reinstall WinTweaks.
     pause
-    exit /b
+    exit
 )
 
 echo [SUCCESS] All core files present.
@@ -181,6 +179,6 @@ echo [SUCCESS] First-run setup completed successfully!
 timeout /t 2 >nul
 
 :: Launch your main Python script here once ready!
-python main.py
+python ../main.py
 pause
 exit /b
