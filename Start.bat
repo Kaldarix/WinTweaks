@@ -6,8 +6,7 @@ set "ver=1.0.0"
 set "repo=Kaldarix/WinTweaks"
 
 :calls
-call :thankin
-call
+call :firstruncheck
 
 :check_admin
 cls
@@ -24,7 +23,16 @@ goto :eof
 
 :thanking
 echo [INFO] Thank you for installing my scirpt.
-echo.
-echo          NAME
-echo       WINTWEAKS
-echo.
+goto :eof
+
+:firstruncheck
+echo [INFO] Checking for first run...
+:: Check if firstrun=true exists in the config file
+powershell -Command "$content = Get-Content 'assets\main.cfg'; if ($content -match 'firstrun=true') { exit 0 } else { exit 1 }"
+
+if %errorLevel% equ 0 (
+    echo [INFO] First run detected as true. Proceeding with setup...
+	call assets/firstrun.bat
+) else (
+    goto :eof
+)
